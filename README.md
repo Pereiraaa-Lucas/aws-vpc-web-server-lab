@@ -1,45 +1,52 @@
-# 🌐 Laboratório AWS: Criação de VPC Customizada e Servidor Web
+# Projeto: Criação de VPC Personalizada e Instância de Servidor Web na AWS
 
-Este repositório documenta a realização do laboratório prático da AWS focado em redes em nuvem, onde foi construída uma arquitetura de rede personalizada (VPC) do zero e implantada uma instância Amazon EC2 configurada como um servidor web.
+Este repositório documenta o passo a passo e a arquitetura desenvolvida durante o laboratório prático **"Crie sua VPC e inicie um servidor web"** da AWS Cloud Computing Foundations Academy. O objetivo principal foi projetar e implementar uma rede isolada, segura e altamente disponível na nuvem da AWS.
 
 ---
 
 ## 🏗️ Arquitetura da Solução
 
-A infraestrutura foi projetada para atender aos requisitos de alta disponibilidade e segurança, dividindo recursos entre duas Zonas de Disponibilidade (AZs).
+A infraestrutura provisionada contempla os seguintes componentes de rede e computação:
 
-### Componentes Implantados:
-* **Amazon VPC**: Bloco CIDR `10.0.0.0/16`.
-* **Sub-redes Públicas (2 AZs)**: 
-  * `Public Subnet 1` (10.0.0.0/24) com Gateway NAT[cite: 24].
-  * `Public Subnet 2` (10.0.2.0/24)[cite: 25].
-* **Sub-redes Privadas (2 AZs)**:
-  * `Private Subnet 1` (10.0.1.0/24)[cite: 24].
-  * `Private Subnet 2` (10.0.3.0/24)[cite: 25].
-* **Internet Gateway (IGW)**: Para prover acesso externo à VPC[cite: 24].
-* **Gateway NAT**: Para permitir que instâncias nas sub-redes privadas acessem a internet de forma segura[cite: 24].
-* **Tabelas de Rotas**: Rotas configuradas para tráfego local (`10.0.0.0/16`) e externo (`0.0.0.0/0`)[cite: 24].
-* **Grupo de Segurança (`Web Security Group`)**: Firewall virtual configurado para permitir tráfego HTTP (`Porta 80`) de qualquer origem (`Anywhere-IPv4`).
-* **Instância Amazon EC2 (`Web Server 1`)**:
-  * Tipo: `t3.micro`.
-  * Sistema Operacional: Amazon Linux 2[cite: 26].
-  * Configurada com um script de inicialização (*User Data*) para instalação automática do servidor web Apache e PHP[cite: 26].
+* **Amazon VPC**: Bloco CIDR `10.0.0.0/16` configurado com isolamento de rede.
+* **Zonas de Disponibilidade (AZs)**: Utilização de duas AZs (`us-west-2a` e `us-west-2b`) para redundância.
+* **Sub-redes Públicas**: 
+  * `Public Subnet 1`: `10.0.0.0/24` (na AZ A)
+  * `Public Subnet 2`: `10.0.2.0/24` (na AZ B)
+* **Sub-redes Privadas**: 
+  * `Private Subnet 1`: `10.0.1.0/24` (na AZ A)
+  * `Private Subnet 2`: `10.0.3.0/24` (na AZ B)
+* **Gateways**: 
+  * **Internet Gateway (IGW)** para tráfego externo/público.
+  * **NAT Gateway** posicionado na sub-rede pública para prover acesso seguro à internet para instâncias nas sub-redes privadas.
+* **Tabelas de Rotas**: Roteamento configurado separadamente para o tráfego público e privado.
+* **Segurança (Security Group)**: `Web Security Group` permitindo o tráfego de entrada HTTP (porta 80) a partir de qualquer origem (`0.0.0.0/0`).
+* **Computação (Amazon EC2)**: Instância `t3.micro` rodando Amazon Linux 2, provisionada na Sub-rede Pública 2, atuando como servidor web através do script de inicialização (UserData) do Apache.
 
 ---
 
-## 🛠️ Passo a Passo Realizado no Laboratório
+## 🛠️ Passo a Passo da Implementação
 
-1. **Criação da VPC e Recursos Iniciais (Tarefa 1):** Utilização do assistente de VPC para gerar a estrutura base com sub-redes públicas e privadas na Zona de Disponibilidade A[cite: 24].
-2. **Expansão para Múltiplas AZs (Tarefas 2 e 3):** Criação da `Public Subnet 2` e `Private Subnet 2` na Zona de Disponibilidade B, associando-as às respectivas tabelas de rotas para garantir alta disponibilidade[cite: 25].
-3. **Configuração de Segurança (Tarefa 4):** Criação do Grupo de Segurança da Web liberando tráfego HTTP na porta 80[cite: 26].
-4. **Implantação do Servidor Web (Tarefa 5):** Lançamento da instância EC2 conectada à nova VPC, associada ao grupo de segurança correto e provisionada com o script de dados do usuário (*User Data*)[cite: 26]:
-   ```bash
-   #!/bin/bash
-   #Install Apache Web Server and PHP
-   yum install -y httpd mysql php
-   #Download Lab files
-   wget [https://aws-tc-largeobjects.s3.us-west-2.amazonaws.com/CUR-TF-100-RESTRT-1/267-lab-NF-build-vpc-web-server/s3/lab-app.zip](https://aws-tc-largeobjects.s3.us-west-2.amazonaws.com/CUR-TF-100-RESTRT-1/267-lab-NF-build-vpc-web-server/s3/lab-app.zip)
-   unzip lab-app.zip -d /var/www/html/
-   #Turn on web server
-   chkconfig httpd on
-   service httpd start
+### 1. Criação da VPC e Redes Iniciais
+- Utilização do assistente de criação da VPC ("VPC e muito mais") para configurar o bloco CIDR principal `10.0.0.0/16`.
+- Configuração de 1 NAT Gateway e sub-redes iniciais na Zona de Disponibilidade A.
+
+### 2. Expansão para Alta Disponibilidade (Multi-AZ)
+- Criação manual da **Public Subnet 2** (`10.0.2.0/24`) e da **Private Subnet 2** (`10.0.3.0/24`) na segunda Zona de Disponibilidade.
+- Associação da *Public Subnet 2* à **Public Route Table** e da *Private Subnet 2* à **Private Route Table**.
+
+### 3. Configuração do Grupo de Segurança
+- Criação do grupo de segurança restrito à *Lab VPC*.
+- Adição de regra de entrada (*Inbound Rule*) liberando a porta **HTTP (80)** para o mundo externo (`Anywhere-IPv4`).
+
+### 4. Lançamento do Servidor Web (Amazon EC2)
+- Instância criada do tipo `t3.micro` baseada em **Amazon Linux 2**.
+- Associação à *Public Subnet 2* com atribuição automática de IP público.
+- Inserção do script de automação no campo **Dados do Usuário (UserData)** para instalar e iniciar o servidor Apache e baixar os arquivos do laboratório:
+  ```bash
+  #!/bin/bash
+  yum install -y httpd mysql php
+  wget [https://aws-tc-largeobjects.s3.us-west-2.amazonaws.com/CUR-TF-100-RESTRT-1/267-lab-NF-build-vpc-web-server/s3/lab-app.zip](https://aws-tc-largeobjects.s3.us-west-2.amazonaws.com/CUR-TF-100-RESTRT-1/267-lab-NF-build-vpc-web-server/s3/lab-app.zip)
+  unzip lab-app.zip -d /var/www/html/
+  chkconfig httpd on
+  service httpd start
